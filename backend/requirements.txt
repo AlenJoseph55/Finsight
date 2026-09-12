@@ -1,0 +1,66 @@
+# =============================================================================
+# FinSight Backend Dependencies
+# =============================================================================
+
+# --- Web Framework & API ---
+# FastAPI: High performance async web framework with automatic OpenAPI docs
+fastapi>=0.111.0,<0.112.0
+# Uvicorn: ASGI web server to run FastAPI
+uvicorn[standard]>=0.30.0,<0.31.0
+# Pydantic: Data validation and settings management using Python type annotations
+pydantic>=2.7.0,<3.0.0
+pydantic-settings>=2.3.0,<3.0.0
+# python-multipart: Required for file uploads (PDF, images, spreadsheets)
+python-multipart>=0.0.9
+
+# --- Database & Storage ---
+# SQLAlchemy 2.0: Python SQL toolkit and Object Relational Mapper (ORM) with async support
+sqlalchemy>=2.0.30,<3.0.0
+# asyncpg: High-performance asynchronous PostgreSQL driver
+asyncpg>=0.29.0
+# psycopg2-binary: Synchronous PostgreSQL driver used by Alembic for schema migrations
+psycopg2-binary>=2.9.9
+# pgvector: Python adapter for PostgreSQL pgvector extension (storing & searching vector embeddings)
+pgvector>=0.3.0
+# Alembic: Lightweight database migration tool for SQLAlchemy
+alembic>=1.13.0
+
+# --- Cache & Background Jobs ---
+# redis: In-memory datastore client for caching quotes and broker for Celery
+redis>=5.0.4
+# celery: Distributed task queue for running long background jobs (news monitoring, OCR)
+celery>=5.4.0
+
+# --- Privacy & Security ---
+# cryptography: Used for AES-256 (Fernet) field encryption of sensitive financial text
+cryptography>=42.0.0
+# python-jose & passlib: JWT token creation, decoding, and password hashing
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+# google-auth: Verifies Google OAuth tokens securely without storing user passwords
+google-auth>=2.29.0
+
+# --- AI, Embeddings & Document Ingestion ---
+# google-genai: Official Google GenAI SDK for Gemini models (structured outputs, multimodal vision)
+google-genai>=0.1.0
+# pdfplumber: Extracts structured text and tables from investment PDFs and CAS statements
+pdfplumber>=0.11.0
+# Pillow: Python Imaging Library for reading uploaded screenshot formats (PNG, JPG)
+Pillow>=10.3.0
+
+# --- Financial Math & Market Data ---
+# numpy & numpy-financial: Deterministic arithmetic for XIRR, returns, and allocations
+numpy>=1.26.0
+numpy-financial>=1.0.0
+# yfinance: Free real-time & historical market quotes for Indian (NSE/BSE) & US stocks
+yfinance>=0.2.40
+# httpx: Async HTTP client for calling external APIs (Finnhub, AMFI NAV)
+httpx>=0.27.0
+# pyyaml: Configuration loading for multi-model LLM and Market Data provider routing
+pyyaml>=6.0.1
+# litellm: Unified LLM router supporting 100+ AI providers (Gemini, Groq, OpenAI, Anthropic)
+litellm>=1.100.0
+# tzdata: IANA timezone database for Python zoneinfo module.
+# REQUIRED in Docker (Alpine/Debian-slim images do not ship system timezone files).
+# Without this, ZoneInfo("Asia/Kolkata") raises ZoneInfoNotFoundError at runtime.
+tzdata>=2024.1
