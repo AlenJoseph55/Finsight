@@ -1,0 +1,24 @@
+# =============================================================================
+# Active LLM Routing Configuration
+# Maps AI task domains to their primary model and automatic fallback chain.
+# =============================================================================
+routes:
+  extraction:
+    primary: gemini
+    fallback: [groq, openai]
+    description: "PDF statements and structured table extraction"
+
+  vision:
+    primary: gemini
+    fallback: [openai]
+    description: "Multimodal screenshot & image ingestion"
+
+  research:
+    primary: groq
+    fallback: [gemini, openai]
+    description: "Interactive RAG assistant and semantic analysis"
+
+  classification:
+    primary: groq
+    fallback: [gemini]
+    description: "News tagging, sentiment scoring, and sector mapping"

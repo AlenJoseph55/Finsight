@@ -1,0 +1,15 @@
+# =============================================================================
+# Google Gemini Provider Configuration
+# Multimodal reasoning: reads financial statements, PDF text, and screenshots natively.
+# =============================================================================
+provider: gemini
+model: gemini-1.5-flash
+api_key_env: GEMINI_API_KEY
+max_tokens: 8192
+temperature: 0.1
+cost_per_1m_input_tokens: 0.075
+cost_per_1m_output_tokens: 0.30
+supports_vision: true
+supports_structured_output: true
+enabled: true
+description: "Google Gemini 1.5 Flash - optimized for fast multimodal extraction and OCR parsing."

@@ -1,0 +1,14 @@
+# =============================================================================
+# OpenAI Provider Configuration (Fallback & Benchmark)
+# =============================================================================
+provider: openai
+model: gpt-4o-mini
+api_key_env: OPENAI_API_KEY
+max_tokens: 4096
+temperature: 0.1
+cost_per_1m_input_tokens: 0.15
+cost_per_1m_output_tokens: 0.60
+supports_vision: true
+supports_structured_output: true
+enabled: true
+description: "OpenAI GPT-4o-mini - reliable benchmark and high-quality secondary fallback."

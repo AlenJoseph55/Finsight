@@ -1,0 +1,15 @@
+# =============================================================================
+# Groq Provider Configuration
+# Ultra-fast inference with generous free tier (Llama 3.3 70B Versatile).
+# =============================================================================
+provider: groq
+model: groq/llama-3.3-70b-versatile
+api_key_env: GROQ_API_KEY
+max_tokens: 8192
+temperature: 0.1
+cost_per_1m_input_tokens: 0.0
+cost_per_1m_output_tokens: 0.0
+supports_vision: false
+supports_structured_output: true
+enabled: true
+description: "Groq Llama 3.3 70B - zero-cost free tier with near-instant token generation for chat and classification."
