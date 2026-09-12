@@ -1,0 +1,13 @@
+# =============================================================================
+# Finnhub Provider Configuration
+# Covers global market news, sentiment scoring, and company fundamentals.
+# Free Tier: 60 API calls/minute with real-time news headlines.
+# =============================================================================
+provider: finnhub
+api_key_env: FINNHUB_API_KEY
+enabled: true
+base_url: "https://finnhub.io/api/v1"
+rate_limit_per_minute: 60
+supported_types:
+  - news
+  - fundamentals

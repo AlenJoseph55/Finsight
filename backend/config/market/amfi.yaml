@@ -1,0 +1,11 @@
+# =============================================================================
+# AMFI India Provider Configuration (Association of Mutual Funds in India)
+# Official authority for Indian Mutual Fund Net Asset Values (NAV).
+# No API key required; published daily at amfiindia.com.
+# =============================================================================
+provider: amfi
+enabled: true
+nav_text_url: "https://www.amfiindia.com/spages/NAVAll.txt"
+cache_ttl_seconds: 86400  # 24 hours (AMFI updates once daily at end of business)
+supported_types:
+  - nav

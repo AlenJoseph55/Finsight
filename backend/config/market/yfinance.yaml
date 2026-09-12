@@ -1,0 +1,14 @@
+# =============================================================================
+# Yahoo Finance Provider Configuration
+# Covers NSE/BSE Indian equities, ETFs, global indices, and historical data.
+# =============================================================================
+provider: yfinance
+enabled: true
+rate_limit_per_minute: 120
+supported_types:
+  - quote
+  - historical
+exchange_suffix_map:
+  NSE: ".NS"
+  BSE: ".BO"
+  US: ""

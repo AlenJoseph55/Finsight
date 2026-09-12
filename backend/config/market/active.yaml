@@ -1,0 +1,29 @@
+# =============================================================================
+# Active Market Data Provider Routing
+# Routes financial data queries by data type to their primary provider and fallbacks.
+# =============================================================================
+routes:
+  quote:
+    primary: yfinance
+    fallback: [finnhub]
+    description: "Real-time & delayed stock/ETF quotes"
+
+  news:
+    primary: finnhub
+    fallback: [yfinance]
+    description: "Financial news headlines and sentiment"
+
+  nav:
+    primary: amfi
+    fallback: []
+    description: "Official Indian Mutual Fund NAV (AMFI is sole authoritative source)"
+
+  historical:
+    primary: yfinance
+    fallback: []
+    description: "Historical price series for volatility & Sharpe calculations"
+
+  fundamentals:
+    primary: finnhub
+    fallback: [yfinance]
+    description: "P/E, debt ratios, EPS metrics"
