@@ -54,6 +54,8 @@ class PortfolioSummary(BaseModel):
     xirr_pct: Optional[float] = None
     is_concentrated: bool = False
     concentration_summary: Optional[str] = None
+    extraction_status: str = "complete"
+    extraction_note: Optional[str] = None
     holdings: List[HoldingResponse] = []
     sector_allocations: List[SectorAllocationResponse] = []
     created_at: datetime
@@ -68,3 +70,20 @@ class FeedbackCreate(BaseModel):
     corrected_value: str
     correction_field: str = Field(..., description="'sector', 'amount', or 'instrument_type'")
     notes: Optional[str] = None
+
+
+class UpdateHoldingRequest(BaseModel):
+    name: Optional[str] = Field(None, description="Updated name of the company or mutual fund")
+    sector: Optional[str] = Field(None, description="Updated industry sector")
+    invested_amount: Optional[float] = Field(None, ge=0, description="Updated total invested amount in INR")
+    current_value: Optional[float] = Field(None, ge=0, description="Updated current market value in INR")
+    units: Optional[float] = Field(None, ge=0, description="Updated number of units or shares")
+    nav: Optional[float] = Field(None, ge=0, description="Updated NAV or unit price")
+    instrument_type: Optional[str] = Field(None, description="'STOCK', 'MUTUAL_FUND', or 'ETF'")
+
+
+class FlushInvestmentDataResponse(BaseModel):
+    message: str
+    deleted_portfolios: int
+    deleted_holdings: int
+
