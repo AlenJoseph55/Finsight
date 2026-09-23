@@ -13,6 +13,7 @@ Architecture Highlights:
 - SaaS Control Plane & Super-Admin routes enabled.
 """
 
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -29,7 +30,7 @@ from backend.app.database import engine, Base
 from backend.app.core.exceptions import FinSightException, ErrorCode
 from backend.app.core.context import request_id_ctx, client_ip_ctx
 from backend.app.core.logging import logger, anonymize_ip, get_client_ip
-from backend.app.routers import health, auth, portfolio, admin
+from backend.app.routers import health, auth, portfolio, admin, sip, chat, alerts, analytics
 from backend.app.market import market_data
 from backend.app.core.responses import SuccessResponse
 
@@ -50,7 +51,28 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate users table columns if missing
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(255);"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'investor';"))
+        # One-time data cleanup: downgrade legacy admin_key users to investor (Mitigation H4)
+        await conn.execute(text("UPDATE users SET role = 'investor' WHERE auth_method = 'admin_key';"))
+        # Migrate market_events and alerts table columns if missing
+        await conn.execute(text("ALTER TABLE market_events ADD COLUMN IF NOT EXISTS topic_tag VARCHAR(100);"))
+        await conn.execute(text("ALTER TABLE market_events ADD COLUMN IF NOT EXISTS action_advice TEXT;"))
+        await conn.execute(text("ALTER TABLE market_events ADD COLUMN IF NOT EXISTS stocks_affected JSON DEFAULT '[]'::json;"))
+        await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS topic_tag VARCHAR(100);"))
+        await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS action_advice TEXT;"))
+        await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS stocks_affected JSON DEFAULT '[]'::json;"))
     logger.info("Database tables and pgvector extension ready.")
+
+    # Sync API keys from settings into os.environ for LiteLLM
+    if settings.GEMINI_API_KEY and not os.environ.get("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
+    if settings.GROQ_API_KEY and not os.environ.get("GROQ_API_KEY"):
+        os.environ["GROQ_API_KEY"] = settings.GROQ_API_KEY
+    if settings.OPENAI_API_KEY and not os.environ.get("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
 
     yield  # Application processes requests
 
@@ -59,13 +81,16 @@ async def lifespan(app: FastAPI):
     logger.info("Database shutdown complete.")
 
 
+is_prod = settings.ENVIRONMENT.lower() == "production"
+
 app = FastAPI(
     title="FinSight API",
     description="Privacy-First Agentic Financial Intelligence Platform",
     version="0.2.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
+    openapi_url=None if is_prod else "/openapi.json",
 )
 
 # CORS middleware
@@ -227,7 +252,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(portfolio.router)
+app.include_router(sip.router)
+app.include_router(chat.router)
+app.include_router(alerts.router)
 app.include_router(admin.router)
+app.include_router(analytics.router)
 
 
 # Market Data Abstraction Endpoint (NSE, BSE, US, AMFI)
