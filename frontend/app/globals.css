@@ -5,6 +5,8 @@
   --foreground: #f1f5f9;
   --card-bg: #0f1523;
   --card-border: #1b2438;
+  --brand-bg: #f7f8f6;
+  --brand-border: #e2e2dd;
 }
 
 body {
@@ -22,14 +24,14 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d14;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #c8cfc9;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
 
 /* Monospace font for exact numbers */
@@ -37,3 +39,13 @@ body {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
 }
+
+/* Editorial Serif & Handwritten Script typography */
+.font-serif-editorial {
+  font-family: var(--font-newsreader), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+.font-handwriting {
+  font-family: var(--font-caveat), "Caveat", cursive;
+}
+
