@@ -22,3 +22,8 @@ routes:
     primary: groq
     fallback: [gemini]
     description: "News tagging, sentiment scoring, and sector mapping"
+
+  embedding:
+    primary: gemini
+    fallback: []
+    description: "Semantic vector embeddings for RAG and document chunks"
