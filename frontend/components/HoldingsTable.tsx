@@ -1,23 +1,108 @@
 "use client";
 
 import React, { useState } from "react";
-import { Holding } from "@/lib/types";
-import { Layers, Briefcase, Edit3, Check, X, ArrowUpRight } from "lucide-react";
+import { Holding, UpdateHoldingPayload } from "@/lib/types";
+import {
+  Search,
+  Plus,
+  Trash2,
+  Edit3,
+  PieChart,
+  Check,
+  Edit2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { EditHoldingModal } from "./EditHoldingModal";
 
 interface HoldingsTableProps {
   holdings: Holding[];
+  totalValue: number;
   onCorrectHolding?: (holdingId: number, newSector: string) => void;
+  onUpdateHolding?: (holdingId: number, payload: UpdateHoldingPayload) => Promise<void>;
+  onDeleteHolding?: (holdingId: number) => Promise<void>;
+  onFlushData?: () => void;
+  onOpenUpload?: () => void;
 }
+
+const COMMON_SECTORS = [
+  "Financial Services",
+  "Information Technology",
+  "Energy",
+  "Automobile",
+  "Healthcare",
+  "Consumer Goods",
+  "FMCG",
+  "Realty",
+  "Metals & Mining",
+  "Construction & Infrastructure",
+  "Telecommunication",
+  "Diversified",
+];
 
 export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   holdings,
+  totalValue,
   onCorrectHolding,
+  onUpdateHolding,
+  onDeleteHolding,
+  onFlushData,
+  onOpenUpload,
 }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedType, setSelectedType] = useState<string>("ALL");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editedSector, setEditedSector] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
+  const [deletingHolding, setDeletingHolding] = useState<Holding | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const itemsPerPage = 8;
 
-  const mutualFunds = holdings.filter((h) => h.instrument_type === "MUTUAL_FUND" || h.name.includes("Fund") || h.name.includes("ETF"));
-  const stocks = holdings.filter((h) => h.instrument_type === "STOCK" && !h.name.includes("Fund") && !h.name.includes("ETF"));
+  // Empty state if no holdings at all
+  if (holdings.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50/80 border border-emerald-100/80 flex items-center justify-center text-emerald-600 mb-4 shadow-inner">
+          <PieChart className="w-7 h-7" />
+        </div>
+        <h3 className="text-base font-bold text-slate-900 mb-1.5">No investments tracked yet</h3>
+        <p className="text-xs text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
+          Upload your CAMS/KFintech Consolidated Account Statement (CAS) or brokerage contract note to view live portfolio analytics, sector look-through, and risk health.
+        </p>
+        {onOpenUpload && (
+          <button
+            onClick={onOpenUpload}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Statement</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Filter holdings
+  const filteredHoldings = holdings.filter((h) => {
+    const matchesSearch =
+      h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      h.sector.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (selectedType === "ALL") return true;
+    if (selectedType === "STOCK") return h.instrument_type === "STOCK";
+    if (selectedType === "MUTUAL_FUND") return h.instrument_type === "MUTUAL_FUND";
+    return true;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredHoldings.length / itemsPerPage) || 1;
+  const paginatedHoldings = filteredHoldings.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleStartEdit = (h: Holding) => {
     setEditingId(h.id);
@@ -31,140 +116,416 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     setEditingId(null);
   };
 
-  const renderSection = (title: string, icon: React.ReactNode, items: Holding[]) => {
-    if (items.length === 0) return null;
+  const handleConfirmDelete = async () => {
+    if (!deletingHolding || !onDeleteHolding) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteHolding(deletingHolding.id);
+      setDeletingHolding(null);
+    } catch (err) {
+      console.error("Failed to delete holding:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
-    return (
-      <div className="mb-6 last:mb-0">
-        <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-[#1b2438]">
-          <span className="text-slate-400">{icon}</span>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-            {title} ({items.length})
-          </h3>
+  const formatRupee = (val: number) =>
+    "₹" + Math.round(val).toLocaleString("en-IN");
+
+  return (
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs">
+      {/* Header with Title & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 tracking-tight">Your Holdings</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {holdings.length} investments · {formatRupee(totalValue)}
+          </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="text-slate-500 uppercase text-[10px] tracking-wider border-b border-[#182236]">
-                <th className="pb-2 font-medium">Asset Name</th>
-                <th className="pb-2 font-medium">Domain / Sector</th>
-                <th className="pb-2 font-medium text-right">Invested</th>
-                <th className="pb-2 font-medium text-right">Current Value</th>
-                <th className="pb-2 font-medium text-right">Gain / Loss</th>
-                <th className="pb-2 font-medium text-right">Weight</th>
-                <th className="pb-2 font-medium text-center">Feedback</th>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Search Box */}
+          <div className="relative flex-1 sm:flex-initial min-w-[130px]">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search holdings..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 w-full sm:w-48"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <select
+            value={selectedType}
+            onChange={(e) => {
+              setSelectedType(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 focus:outline-none"
+          >
+            <option value="ALL">All types</option>
+            <option value="STOCK">Stocks</option>
+            <option value="MUTUAL_FUND">Mutual Funds</option>
+          </select>
+
+          {/* Flush Data Button */}
+          {onFlushData && holdings.length > 0 && (
+            <button
+              onClick={onFlushData}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200/80 bg-rose-50/50 hover:bg-rose-100/70 text-rose-700 text-xs font-medium shadow-xs transition-colors cursor-pointer"
+              title="Flush all investment records and reset portfolio"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              <span className="hidden sm:inline">Flush Data</span>
+            </button>
+          )}
+
+          {/* Add / Import Button */}
+          {onOpenUpload && (
+            <button
+              onClick={onOpenUpload}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Investment</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Holdings Table (Desktop / Large Screens: >= lg) */}
+      <div className="hidden lg:block overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="text-slate-500 text-[11px] font-semibold border-b border-slate-200/80">
+              <th className="py-3 pr-4">Name</th>
+              <th className="py-3 px-3">Type</th>
+              <th className="py-3 px-3">Sector</th>
+              <th className="py-3 px-3 text-right">Invested</th>
+              <th className="py-3 px-3 text-right">Current Value</th>
+              <th className="py-3 px-3 text-right">Gain / Loss</th>
+              <th className="py-3 px-3 text-right">Weight</th>
+              <th className="py-3 pl-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {paginatedHoldings.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-slate-500">
+                  No investments found matching your search.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-[#151c2e]">
-              {items.map((h) => {
-                const gain = h.current_value - h.invested_amount;
-                const gainPct = h.invested_amount > 0 ? (gain / h.invested_amount) * 100 : 0;
-                const isPositive = gain >= 0;
+            ) : (
+              paginatedHoldings.map((h) => {
+                const gainAmount = h.current_value - h.invested_amount;
+                const gainPct =
+                  h.invested_amount > 0 ? (gainAmount / h.invested_amount) * 100 : 0;
+                const isPositive = gainPct >= 0;
+                const weightPct = totalValue > 0 ? (h.current_value / totalValue) * 100 : 0;
+                const isStock = h.instrument_type === "STOCK";
 
                 return (
-                  <tr key={h.id} className="hover:bg-[#121929] transition-colors group">
-                    <td className="py-3 pr-3">
-                      <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+                  <tr key={h.id} className="hover:bg-slate-50/70 transition-colors">
+                    {/* Name */}
+                    <td className="py-3.5 pr-4">
+                      <div className="font-semibold text-slate-900 max-w-[220px] truncate">
                         {h.name}
-                        {h.symbol && (
-                          <span className="text-[10px] font-mono text-slate-400">
-                            ({h.symbol})
-                          </span>
-                        )}
                       </div>
                     </td>
 
-                    <td className="py-3 px-2">
-                      {editingId === h.id ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="text"
-                            value={editedSector}
-                            onChange={(e) => setEditedSector(e.target.value)}
-                            className="bg-[#1a233a] text-slate-100 px-2 py-0.5 rounded text-xs border border-indigo-500/50 focus:outline-none"
-                            placeholder="e.g. Healthcare"
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleSaveEdit(h.id)}
-                            className="p-1 hover:text-emerald-400 text-slate-400"
-                            title="Save"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="p-1 hover:text-rose-400 text-slate-400"
-                            title="Cancel"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#141b2a] text-slate-300 border border-[#1f2a3f]">
-                          {h.sector}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-2 text-right font-mono-num text-slate-300">
-                      ₹{h.invested_amount.toLocaleString("en-IN")}
-                    </td>
-
-                    <td className="py-3 px-2 text-right font-mono-num font-semibold text-slate-100">
-                      ₹{h.current_value.toLocaleString("en-IN")}
-                    </td>
-
-                    <td className="py-3 px-2 text-right font-mono-num">
-                      <span className={`font-semibold ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
-                        {isPositive ? "+" : ""}
-                        ₹{gain.toLocaleString("en-IN")} ({isPositive ? "+" : ""}{gainPct.toFixed(1)}%)
+                    {/* Type */}
+                    <td className="py-3.5 px-3">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-medium ${
+                          isStock
+                            ? "bg-indigo-50 text-indigo-700"
+                            : "bg-sky-50 text-sky-700"
+                        }`}
+                      >
+                        {isStock ? "Stock" : "Mutual Fund"}
                       </span>
                     </td>
 
-                    <td className="py-3 px-2 text-right font-mono-num text-slate-300 font-semibold">
-                      {h.allocation_pct.toFixed(1)}%
+                    {/* Sector */}
+                    <td className="py-3.5 px-3">
+                      {editingId === h.id ? (
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={editedSector}
+                            onChange={(e) => setEditedSector(e.target.value)}
+                            className="bg-white border border-emerald-400 rounded px-1.5 py-0.5 text-xs text-slate-800"
+                          >
+                            {COMMON_SECTORS.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleSaveEdit(h.id)}
+                            className="p-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            title="Save"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleStartEdit(h)}
+                          className="group inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 cursor-pointer"
+                          title="Click to quick-change sector"
+                        >
+                          <span className="truncate max-w-[130px]">{h.sector}</span>
+                          <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-slate-500" />
+                        </div>
+                      )}
                     </td>
 
-                    <td className="py-3 pl-2 text-center">
-                      <button
-                        onClick={() => handleStartEdit(h)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-indigo-400 transition-opacity"
-                        title="Correct sector (Human Feedback Loop)"
+                    {/* Invested */}
+                    <td className="py-3.5 px-3 text-right font-medium text-slate-600">
+                      {formatRupee(h.invested_amount)}
+                    </td>
+
+                    {/* Current Value */}
+                    <td className="py-3.5 px-3 text-right font-bold text-slate-900">
+                      {formatRupee(h.current_value)}
+                    </td>
+
+                    {/* Gain / Loss */}
+                    <td className="py-3.5 px-3 text-right">
+                      <span
+                        className={`inline-block font-semibold px-1.5 py-0.5 rounded text-[11px] ${
+                          isPositive
+                            ? "text-emerald-700 bg-emerald-50"
+                            : "text-rose-700 bg-rose-50"
+                        }`}
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
+                        {isPositive ? "+" : ""}
+                        {gainPct.toFixed(1)}%
+                      </span>
+                    </td>
+
+                    {/* Weight */}
+                    <td className="py-3.5 px-3 text-right font-medium text-slate-600">
+                      {weightPct.toFixed(1)}%
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-3.5 pl-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setEditingHolding(h)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          title="Edit holding details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingHolding(h)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Remove holding"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="p-5 rounded-xl bg-[#0d1320] border border-[#182236]">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-            Portfolio Holdings & Domain Allocation
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Verified with Deterministic Math Engine
-          </p>
-        </div>
-        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-[#121929] px-2.5 py-1 rounded border border-[#1f2a3f]">
-          <span>Total Assets:</span>
-          <span className="font-bold text-white">{holdings.length}</span>
-        </div>
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {renderSection("Mutual Funds & ETFs", <Layers className="w-3.5 h-3.5 text-indigo-400" />, mutualFunds)}
-      {renderSection("Equities / Stocks", <Briefcase className="w-3.5 h-3.5 text-emerald-400" />, stocks)}
+      {/* Mobile & Tablet Dual-Row Card Layout (< lg) */}
+      <div className="block lg:hidden divide-y divide-slate-100">
+        {paginatedHoldings.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-500">
+            No investments found matching your search.
+          </div>
+        ) : (
+          paginatedHoldings.map((h) => {
+            const gainAmount = h.current_value - h.invested_amount;
+            const gainPct =
+              h.invested_amount > 0 ? (gainAmount / h.invested_amount) * 100 : 0;
+            const isPositive = gainPct >= 0;
+            const weightPct = totalValue > 0 ? (h.current_value / totalValue) * 100 : 0;
+            const isStock = h.instrument_type === "STOCK";
+
+            return (
+              <div key={`mob-${h.id}`} className="py-3.5 space-y-2">
+                {/* Row 1: Name, Type Badge, and Quick Actions */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-slate-900 text-sm truncate">
+                      {h.name}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-medium ${
+                          isStock
+                            ? "bg-indigo-50 text-indigo-700"
+                            : "bg-sky-50 text-sky-700"
+                        }`}
+                      >
+                        {isStock ? "Stock" : "Mutual Fund"}
+                      </span>
+                      <span className="text-[11px] text-slate-500 truncate max-w-[140px]">
+                        {h.sector}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setEditingHolding(h)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                      title="Edit holding details"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingHolding(h)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Remove holding"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Value, Invested, Gain %, and Weight */}
+                <div className="flex items-center justify-between text-xs pt-0.5 bg-slate-50/60 p-2.5 rounded-xl border border-slate-100">
+                  <div>
+                    <span className="text-[10.5px] text-slate-500 block">Current Value</span>
+                    <span className="font-bold text-slate-900 text-sm">
+                      {formatRupee(h.current_value)}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block">
+                      Invested: {formatRupee(h.invested_amount)}
+                    </span>
+                  </div>
+
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <span
+                      className={`inline-block font-semibold px-2 py-0.5 rounded text-[11px] ${
+                        isPositive
+                          ? "text-emerald-700 bg-emerald-50 border border-emerald-200/60"
+                          : "text-rose-700 bg-rose-50 border border-rose-200/60"
+                      }`}
+                    >
+                      {isPositive ? "+" : ""}
+                      {gainPct.toFixed(1)}%
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 font-medium">
+                      Weight: {weightPct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Pagination Footer */}
+      {totalPages > 1 && (
+        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 text-center sm:text-left">
+          <span>
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, filteredHoldings.length)} of{" "}
+            {filteredHoldings.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-30"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-7 h-7 sm:w-6 sm:h-6 rounded text-xs font-medium transition-colors ${
+                  currentPage === page
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-30"
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Holding Modal */}
+      <EditHoldingModal
+        isOpen={!!editingHolding}
+        onClose={() => setEditingHolding(null)}
+        holding={editingHolding}
+        onSave={async (id, payload) => {
+          if (onUpdateHolding) {
+            await onUpdateHolding(id, payload);
+          }
+          setEditingHolding(null);
+        }}
+      />
+
+      {/* Delete Holding Confirmation Dialog */}
+      {deletingHolding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Remove Investment</h4>
+                <p className="text-xs text-slate-500 truncate max-w-[220px]">
+                  {deletingHolding.name}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Are you sure you want to remove this holding? Your total portfolio value and sector allocations will be automatically recalculated.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setDeletingHolding(null)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                {isDeleting ? "Removing..." : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

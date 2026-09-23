@@ -1,74 +1,100 @@
 "use client";
 
 import React from "react";
-import { Shield, Sparkles, Activity, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { Bell, LogOut, LogIn } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { FinSightLogo } from "@/components/brand/FinSightLogo";
 
 interface NavbarProps {
-  onRefresh: () => void;
-  isRefreshing: boolean;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   healthStatus?: string;
   dbLatency?: number;
+  unreadAlertsCount?: number;
+  onOpenAlerts?: () => void;
+  bellPulse?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onRefresh,
-  isRefreshing,
-  healthStatus = "healthy",
-  dbLatency,
+  unreadAlertsCount = 0,
+  onOpenAlerts,
+  bellPulse = false,
 }) => {
+  const { user, logout } = useAuth();
+
   return (
-    <header className="border-b border-[#1b2438] bg-[#0b0f19]/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-[#e2e2dd] bg-[#fbfbfa]/95 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <span className="text-white font-black text-lg tracking-wider">FS</span>
-          </div>
-          <div>
+        <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
+          <FinSightLogo variant="full" height={32} className="h-7 sm:h-8 w-auto" />
+          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 hidden min-[400px]:inline-block">
+            Live
+          </span>
+        </Link>
+
+        {/* Status Indicators & Actions */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* User / Auth State */}
+          {user ? (
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-white">FinSight</span>
-              <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                v0.1.0 AI
-              </span>
+              {user.is_demo ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    Demo Mode
+                  </span>
+                  <Link
+                    href="/login"
+                    className="text-[11px] font-medium text-slate-500 hover:text-emerald-700 transition-colors hidden sm:inline"
+                  >
+                    OAuth Sign In
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50/80 border border-emerald-200 text-xs font-medium text-emerald-800">
+                  <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[9px] font-bold">
+                    {user.display_name ? user.display_name.charAt(0).toUpperCase() : "U"}
+                  </div>
+                  <span className="hidden sm:inline max-w-[110px] truncate">{user.display_name}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={logout}
+                title="Log Out"
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <p className="text-xs text-slate-400 hidden sm:block">
-              Privacy-First Autonomous Financial Intelligence
-            </p>
-          </div>
-        </div>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </Link>
+          )}
 
-        {/* Status Indicators & Action */}
-        <div className="flex items-center gap-3">
-          {/* Privacy Badge */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>AES-256 Encrypted</span>
-          </div>
-
-          {/* Health & Latency */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#101726] border border-[#1e2a42] text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <Activity className="w-3.5 h-3.5 text-slate-400" />
-            <span>
-              DB: <span className="font-mono text-emerald-400">{dbLatency !== undefined ? `${dbLatency}ms` : "Active"}</span>
-            </span>
-          </div>
-
-          {/* AI Agents Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-950/60 border border-indigo-800/40 text-xs text-indigo-300">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>3 Agents Armed</span>
-          </div>
-
-          {/* Refresh Button */}
+          {/* Alerts Bell */}
           <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141c2e] hover:bg-[#1a253c] border border-[#23314d] text-xs font-medium text-slate-200 transition-all cursor-pointer disabled:opacity-50"
-            title="Recalculate & Sync"
+            onClick={onOpenAlerts}
+            className={`relative p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer ${
+              bellPulse ? "ring-2 ring-amber-400 ring-offset-1" : ""
+            }`}
+            title="Market Alerts"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`} />
-            <span className="hidden sm:inline">Sync</span>
+            <Bell className={`w-4 h-4 ${bellPulse ? "text-amber-600" : ""}`} />
+            {unreadAlertsCount > 0 && (
+              <span className={`absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center shadow-xs ${
+                bellPulse ? "animate-bounce" : ""
+              }`}>
+                {unreadAlertsCount > 9 ? "9+" : unreadAlertsCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
