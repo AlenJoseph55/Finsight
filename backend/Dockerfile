@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir -r /workspace/backend/requirements.txt
 
 # Copy source code
 COPY backend /workspace/backend
-COPY .env /workspace/.env
 
 ENV PYTHONPATH=/workspace
 

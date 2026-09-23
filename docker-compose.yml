@@ -46,13 +46,22 @@ services:
       dockerfile: backend/Dockerfile
     container_name: finsight-backend
     restart: always
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://finsight_user:finsight_secret@db:5432/finsight_db
       - REDIS_URL=redis://redis:6379/0
-      - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
-      - SECRET_KEY=change-this-to-a-super-secret-32-byte-hex-key-in-production
-      - FIELD_ENCRYPTION_KEY=v1n78_qZ8X0A8dI3k2aBcDeFgHiJkLmNoPqRsTuVwXy=
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SECRET_KEY=${SECRET_KEY:-change-this-to-a-super-secret-32-byte-hex-key-in-production}
+      - FIELD_ENCRYPTION_KEY=${FIELD_ENCRYPTION_KEY:-v1n78_qZ8X0A8dI3k2aBcDeFgHiJkLmNoPqRsTuVwXy=}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
     ports:
       - "8000:8000"
     volumes:
