@@ -47,6 +47,11 @@ google-genai>=0.1.0
 pdfplumber>=0.11.0
 # Pillow: Python Imaging Library for reading uploaded screenshot formats (PNG, JPG)
 Pillow>=10.3.0
+# pandas & openpyxl: CSV and Excel (.xlsx) parsing for broker exports and contract notes
+pandas>=2.2.0
+openpyxl>=3.1.2
+# tiktoken: Fast token counting for document chunking
+tiktoken>=0.7.0
 
 # --- Financial Math & Market Data ---
 # numpy & numpy-financial: Deterministic arithmetic for XIRR, returns, and allocations
@@ -64,3 +69,5 @@ litellm>=1.100.0
 # REQUIRED in Docker (Alpine/Debian-slim images do not ship system timezone files).
 # Without this, ZoneInfo("Asia/Kolkata") raises ZoneInfoNotFoundError at runtime.
 tzdata>=2024.1
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

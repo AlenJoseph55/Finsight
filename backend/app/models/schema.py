@@ -39,11 +39,15 @@ class User(Base):
     auth_method: Mapped[str] = mapped_column(String(20), default="jwt")  # "jwt" or "google_oauth"
     oauth_sub: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     preferences_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="investor")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     portfolios: Mapped[List["Portfolio"]] = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")
     alerts: Mapped[List["Alert"]] = relationship("Alert", back_populates="user", cascade="all, delete-orphan")
+    sip_plans: Mapped[List["SipPlan"]] = relationship("SipPlan", back_populates="user", cascade="all, delete-orphan")
 
 
 class Portfolio(Base):
@@ -58,6 +62,9 @@ class Portfolio(Base):
     source_file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Encrypted with AES-256; plaintext is never stored in DB
     raw_text_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    investor_name_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # AES-256
+    extraction_status: Mapped[str] = mapped_column(String(20), default="complete")  # "complete" | "partial" | "failed"
+    extraction_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # describes what failed/partial
     
     # Financial Aggregates (calculated deterministically by Python math engine)
     total_invested: Mapped[float] = mapped_column(Float, default=0.0)
@@ -157,6 +164,9 @@ class MarketEvent(Base):
     headline: Mapped[str] = mapped_column(String(500))
     summary: Mapped[str] = mapped_column(Text)
     sectors_affected: Mapped[list] = mapped_column(JSON, default=list)  # ["Financials", "Technology"]
+    stocks_affected: Mapped[list] = mapped_column(JSON, default=list)
+    topic_tag: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    action_advice: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     severity: Mapped[str] = mapped_column(String(20), default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
     source_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -175,12 +185,16 @@ class Alert(Base):
     
     title: Mapped[str] = mapped_column(String(255))
     message: Mapped[str] = mapped_column(Text)
+    topic_tag: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    action_advice: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    stocks_affected: Mapped[list] = mapped_column(JSON, default=list)
     severity: Mapped[str] = mapped_column(String(20), default="INFO")  # INFO, WARNING, DANGER
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="alerts")
+    event: Mapped[Optional["MarketEvent"]] = relationship("MarketEvent")
 
 
 class FeedbackTrace(Base):
@@ -344,3 +358,75 @@ class LLMLog(Base):
     status: Mapped[str] = mapped_column(String(20), default="success")  # "success", "failed"
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class SipPlan(Base):
+    """
+    Systematic Investment Plan (SIP) Mandate Model.
+    Tracks recurring monthly/quarterly investments, fund name, mapped sector,
+    and extraction metadata.
+    """
+    __tablename__ = "sip_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    source_file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    fund_name: Mapped[str] = mapped_column(String(255), index=True)
+    fund_sector: Mapped[str] = mapped_column(String(100), index=True)
+    instrument_type: Mapped[str] = mapped_column(String(30), default="MUTUAL_FUND")  # MUTUAL_FUND, ETF, STOCK
+
+    monthly_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    frequency: Mapped[str] = mapped_column(String(20), default="MONTHLY")  # MONTHLY, QUARTERLY
+    start_date_str: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    folio_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    extraction_status: Mapped[str] = mapped_column(String(20), default="complete")  # complete, partial, failed
+    extraction_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="sip_plans")
+
+
+class WebVisit(Base):
+    """
+    Privacy-friendly web visitor session tracking.
+    Stores anonymized session fingerprints without personal data leakage.
+    DPDP & GDPR compliant.
+    """
+    __tablename__ = "web_visits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    page_path: Mapped[str] = mapped_column(String(255), index=True)
+    page_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    referrer: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    device_type: Mapped[str] = mapped_column(String(30), default="desktop")
+    browser: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    os: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(50), default="India")
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class WebEvent(Base):
+    """
+    Behavioral & Feature Interaction Events (User exploration patterns & conversion funnels).
+    """
+    __tablename__ = "web_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_category: Mapped[str] = mapped_column(String(50), index=True)
+    event_action: Mapped[str] = mapped_column(String(100), index=True)
+    event_label: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    event_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+

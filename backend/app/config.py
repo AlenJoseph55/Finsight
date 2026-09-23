@@ -11,6 +11,7 @@ Why Pydantic BaseSettings?
 
 from functools import lru_cache
 from typing import List, Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,19 +43,31 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # --- AI & LLM (Google Gemini) ---
+    # --- AI & LLM (Google Gemini, Groq, OpenAI) ---
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
-    EMBEDDING_DIMENSIONS: int = 768  # Gemini text-embedding-004 produces 768-dim vectors
+    GEMINI_MODEL: str = "gemini/gemini-3.6-flash"
+    EMBEDDING_DIMENSIONS: int = 768  # Gemini produces 768-dim vectors
+    GROQ_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
 
     # --- Market Data APIs ---
     FINNHUB_API_KEY: Optional[str] = None
 
     # --- Auth & Security ---
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours (bounded privilege window)
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
+    ADMIN_EMAILS: str = ""
+
+    @field_validator("ADMIN_EMAILS", mode="before")
+    @classmethod
+    def normalize_admin_emails(cls, v: Optional[str]) -> str:
+        return v or ""
+
+    @property
+    def admin_emails_list(self) -> List[str]:
+        return [e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()]
 
     # --- CORS (Cross-Origin Resource Sharing) ---
     FRONTEND_URL: str = "http://localhost:3000"

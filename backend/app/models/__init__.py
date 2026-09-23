@@ -8,6 +8,7 @@ from backend.app.models.schema import (
     MarketEvent,
     Alert,
     FeedbackTrace,
+    SipPlan,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "MarketEvent",
     "Alert",
     "FeedbackTrace",
+    "SipPlan",
 ]

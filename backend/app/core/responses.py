@@ -38,3 +38,22 @@ class ErrorResponse(ApiResponse[None]):
     success: bool = False
     data: Optional[None] = None
     error: ErrorDetail
+
+
+def success_response(
+    data: Any = None,
+    message: Optional[str] = None,
+    path: str = "",
+    request_id: str = "",
+) -> Dict[str, Any]:
+    res: Dict[str, Any] = {
+        "success": True,
+        "request_id": request_id,
+        "path": path,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "data": data,
+    }
+    if message is not None:
+        res["message"] = message
+    return res
+

@@ -28,6 +28,8 @@ class ErrorCode(str, Enum):
     FS_VALIDATION_4220 = "FS_VALIDATION_4220"
     FS_FILE_4000 = "FS_FILE_4000"       # Unsupported file type
     FS_FILE_4001 = "FS_FILE_4001"       # File size exceeds limit
+    FS_FILE_4002 = "FS_FILE_4002"       # Password required or incorrect for encrypted file
+
 
     # AI & External Providers (503x)
     FS_AI_5030 = "FS_AI_5030"           # LLM provider unavailable
