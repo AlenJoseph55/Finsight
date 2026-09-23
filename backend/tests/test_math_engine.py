@@ -54,7 +54,7 @@ def test_user_screenshot_portfolio_math():
 
 def test_concentration_risk_detection():
     """
-    Tests that concentration warning triggers when a single sector exceeds threshold.
+    Tests that concentration warning triggers when a single specific sector exceeds threshold.
     """
     skewed_holdings = [
         HoldingInput(name="HDFC Bank", sector="Financials", invested_amount=300000.0, current_value=350000.0),
@@ -68,3 +68,19 @@ def test_concentration_risk_detection():
     assert result.is_concentrated is True
     assert "Financials" in result.concentration_summary
     assert result.sector_allocations["Financials"] > 80.0
+
+
+def test_diversified_sector_does_not_trigger_false_concentration():
+    """
+    Tests that broad diversified mutual funds and index funds (e.g. 'Diversified')
+    do not trigger a false single-sector concentration warning even if > 30%.
+    """
+    holdings = [
+        HoldingInput(name="Nifty 50 Index Fund", sector="Diversified", invested_amount=400000.0, current_value=450000.0),
+        HoldingInput(name="Parag Parikh Flexi Cap", sector="Diversified", invested_amount=300000.0, current_value=350000.0),
+        HoldingInput(name="TCS", sector="Technology", invested_amount=150000.0, current_value=200000.0),
+    ]
+    # Total = 1,000,000. Diversified = 800,000 (80.0%). Tech = 200,000 (20.0%).
+    result = FinancialMathEngine.compute(holdings, concentration_threshold_pct=30.0)
+    assert result.is_concentrated is False
+    assert "well diversified" in result.concentration_summary.lower()
