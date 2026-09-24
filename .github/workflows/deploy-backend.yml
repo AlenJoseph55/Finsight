@@ -76,8 +76,9 @@ jobs:
             --comment "Deploying FinSight Backend via GitHub Actions" \
             --parameters commands="[
               \"set -e\",
+              \"git config --global --add safe.directory '*'\",
               \"APP_DIR=/home/ubuntu/FinSight\",
-              \"if [ ! -d \\\"\$APP_DIR\\\" ]; then git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git \\\"\$APP_DIR\\\"; chown -R ubuntu:ubuntu \\\"\$APP_DIR\\\"; fi\",
+              \"if [ ! -d \\\"\$APP_DIR/.git\\\" ]; then rm -rf \\\"\$APP_DIR\\\"; git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git \\\"\$APP_DIR\\\"; chown -R ubuntu:ubuntu \\\"\$APP_DIR\\\"; fi\",
               \"cd \\\"\$APP_DIR\\\"\",
               \"git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git\",
               \"git fetch origin main\",
