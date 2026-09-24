@@ -19,6 +19,12 @@ from backend.app.config import get_settings
 
 settings = get_settings()
 
+connect_args = {}
+# Supabase Transaction Pooler (port 6543 / Supavisor) requires statement_cache_size=0
+# to prevent "DuplicatePreparedStatementError" with asyncpg.
+if any(domain in settings.DATABASE_URL for domain in ("supabase.com", "supabase.co", "pooler")):
+    connect_args["statement_cache_size"] = 0
+
 # Create the async engine with connection pooling
 # pool_size: number of persistent connections to keep open
 # max_overflow: how many temporary extra connections to create under high load
@@ -28,6 +34,7 @@ engine: AsyncEngine = create_async_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,  # Checks that connection is alive before using it
+    connect_args=connect_args,
 )
 
 # Async session factory

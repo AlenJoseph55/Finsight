@@ -1,0 +1,18 @@
+# =============================================================================
+# FinSight — Production Docker Compose Override
+# =============================================================================
+# Used on EC2 in combination with docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Key Differences in Production:
+# 1. Port 8000 is bound strictly to localhost (127.0.0.1) so only Caddy can reach it.
+# 2. Removes live-reload code volume mounts (runs the baked Docker image).
+# 3. Disables Uvicorn's --reload flag and enables production workers.
+# =============================================================================
+
+services:
+  backend:
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes: []
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
