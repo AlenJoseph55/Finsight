@@ -64,6 +64,11 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS topic_tag VARCHAR(100);"))
         await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS action_advice TEXT;"))
         await conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS stocks_affected JSON DEFAULT '[]'::json;"))
+        # Migrate web_visits and web_events for unique visitor tracking
+        await conn.execute(text("ALTER TABLE web_visits ADD COLUMN IF NOT EXISTS visitor_id VARCHAR(64);"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_visits_visitor_id ON web_visits (visitor_id);"))
+        await conn.execute(text("ALTER TABLE web_events ADD COLUMN IF NOT EXISTS visitor_id VARCHAR(64);"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_events_visitor_id ON web_events (visitor_id);"))
     logger.info("Database tables and pgvector extension ready.")
 
     # Sync API keys from settings into os.environ for LiteLLM

@@ -757,33 +757,45 @@ async def get_behavior_analytics(request: Request, db: AsyncSession = Depends(ge
             {"action": "click_upload_statement", "category": "conversion", "count": 11},
         ]
 
-    # 3. Conversion / Exploration Funnel
-    landing_views = (await db.execute(
-        select(func.count(WebVisit.id)).where(WebVisit.page_path == "/")
+    # 3. Conversion / Exploration Funnel (Distinct Humans via Browser visitor_id)
+    total_unique = (await db.execute(
+        select(func.count(func.distinct(WebVisit.visitor_id)))
+        .where(WebVisit.visitor_id.isnot(None))
     )).scalar() or 0
-    dashboard_views = (await db.execute(
-        select(func.count(WebVisit.id)).where(WebVisit.page_path.like("/dashboard%"))
+
+    dashboard_unique = (await db.execute(
+        select(func.count(func.distinct(WebVisit.visitor_id)))
+        .where(WebVisit.visitor_id.isnot(None), WebVisit.page_path.like("/dashboard%"))
     )).scalar() or 0
+
     portfolios_count = (await db.execute(select(func.count(Portfolio.id)))).scalar() or 0
     sips_count = (await db.execute(select(func.count(SipPlan.id)))).scalar() or 0
     llm_chat_count = (await db.execute(
         select(func.count(LLMLog.id)).where(LLMLog.task_type == "research")
     )).scalar() or 0
 
-    base_land = max(landing_views + dashboard_views, 40)
-    funnel = [
-        {"step": "1. Landed on Website", "count": base_land, "pct": 100},
-        {"step": "2. Explored Demo / Dashboard", "count": max(dashboard_views, int(base_land * 0.75)), "pct": 75},
-        {"step": "3. Statement Uploaded", "count": max(portfolios_count, 1), "pct": max(int((max(portfolios_count, 1) / base_land) * 100), 20)},
-        {"step": "4. Explored SIP Wealth Growth", "count": max(sips_count, 1), "pct": max(int((max(sips_count, 1) / base_land) * 100), 15)},
-        {"step": "5. Engaged AI Research Copilot", "count": max(llm_chat_count, 1), "pct": max(int((max(llm_chat_count, 1) / base_land) * 100), 10)},
-    ]
+    if total_unique > 0:
+        funnel = [
+            {"step": "1. Landed on Website", "count": total_unique, "pct": 100},
+            {"step": "2. Explored Demo / Dashboard", "count": dashboard_unique, "pct": min(round((dashboard_unique / total_unique) * 100), 100)},
+            {"step": "3. Statement Uploaded", "count": portfolios_count, "pct": min(round((portfolios_count / total_unique) * 100), 100)},
+            {"step": "4. Explored SIP Wealth Growth", "count": sips_count, "pct": min(round((sips_count / total_unique) * 100), 100)},
+            {"step": "5. Engaged AI Research Copilot", "count": llm_chat_count, "pct": min(round((llm_chat_count / total_unique) * 100), 100)},
+        ]
+    else:
+        funnel = [
+            {"step": "1. Landed on Website", "count": 0, "pct": 0},
+            {"step": "2. Explored Demo / Dashboard", "count": 0, "pct": 0},
+            {"step": "3. Statement Uploaded", "count": portfolios_count, "pct": 0},
+            {"step": "4. Explored SIP Wealth Growth", "count": sips_count, "pct": 0},
+            {"step": "5. Engaged AI Research Copilot", "count": llm_chat_count, "pct": 0},
+        ]
 
     return SuccessResponse(
         request_id=req_id,
         path=request.url.path,
         data={
-            "total_interaction_events": max(total_events, len(actions)),
+            "total_interaction_events": int(total_events),
             "exploration_funnel": funnel,
             "feature_leaderboard": actions,
         },

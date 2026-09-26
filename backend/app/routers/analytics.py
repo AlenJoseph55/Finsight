@@ -30,6 +30,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics Ingestion"])
 class AnalyticsCollectPayload(BaseModel):
     type: str = Field(default="pageview", description="'pageview' or 'event'")
     session_id: Optional[str] = None
+    visitor_id: Optional[str] = None
     user_id: Optional[int] = None
     path: str = Field(default="/", description="Route path e.g. /dashboard")
     title: Optional[str] = None
@@ -114,6 +115,7 @@ async def collect_analytics(
         if payload.type == "pageview":
             visit = WebVisit(
                 session_id=session_id,
+                visitor_id=payload.visitor_id,
                 user_id=payload.user_id,
                 page_path=payload.path or "/",
                 page_title=payload.title,
@@ -129,6 +131,7 @@ async def collect_analytics(
             # Behavioral interaction event
             event = WebEvent(
                 session_id=session_id,
+                visitor_id=payload.visitor_id,
                 user_id=payload.user_id,
                 event_category=payload.category or "feature_use",
                 event_action=payload.action or "interaction",

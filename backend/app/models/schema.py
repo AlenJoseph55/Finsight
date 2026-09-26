@@ -402,6 +402,7 @@ class WebVisit(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True)
+    visitor_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     page_path: Mapped[str] = mapped_column(String(255), index=True)
     page_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -422,6 +423,7 @@ class WebEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True)
+    visitor_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     event_category: Mapped[str] = mapped_column(String(50), index=True)
     event_action: Mapped[str] = mapped_column(String(100), index=True)

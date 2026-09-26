@@ -505,6 +505,9 @@ export async function trackAnalytics(payload: {
   label?: string;
   value?: number;
   metadata?: any;
+  visitor_id?: string;
+  session_id?: string;
+  user_id?: number | null;
 }): Promise<void> {
   try {
     const body = JSON.stringify({
@@ -518,6 +521,9 @@ export async function trackAnalytics(payload: {
       label: payload.label,
       value: payload.value,
       metadata: payload.metadata || {},
+      visitor_id: payload.visitor_id,
+      session_id: payload.session_id,
+      user_id: payload.user_id ?? null,
     });
 
     if (navigator.sendBeacon) {
