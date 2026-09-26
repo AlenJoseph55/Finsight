@@ -29,6 +29,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+function decodeJwtUser(token: string | null): UserProfile | null {
+  if (!token) return null;
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload || !payload.sub) return null;
+    return {
+      id: Number(payload.sub),
+      email_hash: payload.email_hash || "",
+      display_name: payload.display_name || (payload.role === "super_admin" ? "Super Admin" : "Investor"),
+      auth_method: payload.auth_method || "jwt",
+      role: payload.role || "investor",
+      is_demo: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -102,6 +129,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedToken) {
       setToken(storedToken);
       document.cookie = `finsight_token=${storedToken}; path=/; SameSite=Strict; Max-Age=${60 * 60 * 24};`;
+      const quickUser = decodeJwtUser(storedToken);
+      if (quickUser) {
+        setUser(quickUser);
+      }
     }
     fetchProfile(storedToken);
   }, []);

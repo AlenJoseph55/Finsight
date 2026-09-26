@@ -58,12 +58,6 @@ type AdminTab = "overview" | "plans" | "users" | "web" | "behavior" | "llm" | "d
 export default function AdminDashboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
 
-  // Defense-in-depth: If not an authenticated super-admin, render 404 (pretend /admin doesn't exist)
-  useEffect(() => {
-    if (!isAuthLoading && (!user || user.role !== "super_admin")) {
-      notFound();
-    }
-  }, [user, isAuthLoading]);
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -333,7 +327,7 @@ export default function AdminDashboardPage() {
   }, [users, userSearch]);
 
   // While auth resolves, render a completely blank dark container (no spinner or admin cues)
-  if (isAuthLoading) {
+  if (isAuthLoading && !user) {
     return <div className="min-h-screen bg-slate-950" />;
   }
 
