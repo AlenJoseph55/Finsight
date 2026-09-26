@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
+    @property
+    def cors_origins_list(self) -> List[str]:
+        origins = list(self.CORS_ORIGINS)
+        if self.FRONTEND_URL and self.FRONTEND_URL not in origins:
+            origins.append(self.FRONTEND_URL.rstrip("/"))
+        return origins
+
     # Pydantic v2 configuration to read from .env file
     model_config = SettingsConfigDict(
         env_file=".env",
