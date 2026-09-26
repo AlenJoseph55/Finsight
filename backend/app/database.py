@@ -19,17 +19,23 @@ from backend.app.config import get_settings
 
 settings = get_settings()
 
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 connect_args = {}
 # Supabase Transaction Pooler (port 6543 / Supavisor) requires statement_cache_size=0
 # to prevent "DuplicatePreparedStatementError" with asyncpg.
-if any(domain in settings.DATABASE_URL for domain in ("supabase.com", "supabase.co", "pooler")):
+if any(domain in db_url for domain in ("supabase.com", "supabase.co", "pooler")):
     connect_args["statement_cache_size"] = 0
 
 # Create the async engine with connection pooling
 # pool_size: number of persistent connections to keep open
 # max_overflow: how many temporary extra connections to create under high load
 engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=(settings.LOG_LEVEL == "DEBUG"),
     pool_size=10,
     max_overflow=20,
