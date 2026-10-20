@@ -15,6 +15,7 @@ interface MetricCardProps {
   badge?: string;
   highlight?: boolean;
   accent?: MetricAccent;
+  isLoading?: boolean;
 }
 
 const ACCENT_STYLES: Record<
@@ -80,7 +81,24 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   icon: Icon,
   badge,
   accent,
+  isLoading,
 }) => {
+  if (isLoading) {
+    const currentAccent = accent || "slate";
+    const style = ACCENT_STYLES[currentAccent] || ACCENT_STYLES.slate;
+    return (
+      <div
+        className={`border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs ${style.topBorder} bg-white animate-pulse`}
+      >
+        <div className="flex items-center justify-between gap-1 mb-2">
+          <div className="h-3.5 bg-slate-200 rounded w-20" />
+          <div className="w-7 h-7 rounded-xl bg-slate-100" />
+        </div>
+        <div className="h-7 bg-slate-200/80 rounded w-32 my-2.5" />
+        <div className="h-3 bg-slate-100 rounded w-24" />
+      </div>
+    );
+  }
   const isPositive = changePct !== undefined && changePct >= 0;
   const currentAccent =
     accent || (changePct !== undefined ? (isPositive ? "emerald" : "rose") : "slate");

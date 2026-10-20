@@ -451,8 +451,8 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* 3-Step Activation Stepper (shown when user has no portfolio and not in demo mode) */}
-        {!hasPortfolio && !isDemoSandbox && (
+        {/* 3-Step Activation Stepper (shown only when data is fully loaded and user has no portfolio and not in demo mode) */}
+        {!isLoading && !hasPortfolio && !isDemoSandbox && (
           <OnboardingStepper
             onOpenUpload={() => setIsUploadOpen(true)}
             onExploreDemo={enterDemoSandbox}
@@ -470,6 +470,7 @@ function DashboardContent() {
                 changePct={hasPortfolio ? absoluteGainPct : undefined}
                 icon={Wallet}
                 accent="emerald"
+                isLoading={isLoading}
               />
               <MetricCard
                 title="Total Invested"
@@ -477,6 +478,7 @@ function DashboardContent() {
                 subtitle="Principal Capital"
                 icon={Landmark}
                 accent="indigo"
+                isLoading={isLoading}
               />
               <MetricCard
                 title="Total Returns"
@@ -484,6 +486,7 @@ function DashboardContent() {
                 changePct={hasPortfolio ? absoluteGainPct : undefined}
                 icon={TrendingUp}
                 accent={absoluteGain >= 0 ? "emerald" : "rose"}
+                isLoading={isLoading}
               />
               <MetricCard
                 title="Annual Growth (XIRR)"
@@ -491,6 +494,7 @@ function DashboardContent() {
                 subtitle="Annualized Compound"
                 icon={Zap}
                 accent="amber"
+                isLoading={isLoading}
               />
             </div>
 
@@ -515,6 +519,7 @@ function DashboardContent() {
             <HoldingsTable
               holdings={portfolio?.holdings || []}
               totalValue={totalValue}
+              isLoading={isLoading}
               onCorrectHolding={handleCorrectHolding}
               onUpdateHolding={handleUpdateHolding}
               onDeleteHolding={handleDeleteHolding}

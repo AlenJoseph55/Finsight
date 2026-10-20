@@ -291,64 +291,15 @@ async def google_oauth_login(payload: GoogleAuthRequest, db: AsyncSession = Depe
     Google OAuth Token Verification.
     Verifies the Google ID token and creates/authenticates the pseudonymous account.
     """
+    # 1. Verify token with Google's public keys
     try:
         from google.oauth2 import id_token
         from google.auth.transport import requests as google_requests
 
-        # Verify token with Google's public keys
         id_info = id_token.verify_oauth2_token(
             payload.id_token,
             google_requests.Request(),
             settings.GOOGLE_CLIENT_ID,
-        )
-
-        user_sub = id_info.get("sub")
-        email = id_info.get("email", "")
-        name = id_info.get("name")
-        hashed = hash_identifier(email) if email else hash_identifier(user_sub)
-
-        stmt = select(User).where(User.oauth_sub == user_sub)
-        result = await db.execute(stmt)
-        user = result.scalar_one_or_none()
-
-        if not user and email:
-            # Also check by email_hash
-            stmt_hash = select(User).where(User.email_hash == hashed)
-            res_hash = await db.execute(stmt_hash)
-            user = res_hash.scalar_one_or_none()
-
-        user_role = "super_admin" if (email and email.lower() in settings.admin_emails_list) else "investor"
-
-        if not user:
-            user = User(
-                email_hash=hashed,
-                auth_method="google_oauth",
-                oauth_sub=user_sub,
-                display_name=name or (email.split("@")[0] if email else "Google Investor"),
-                role=user_role,
-                is_demo=False,
-                preferences_json=_get_default_preferences(),
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-        else:
-            if not user.oauth_sub:
-                user.oauth_sub = user_sub
-            if name and not user.display_name:
-                user.display_name = name
-            # Synchronize role according to current ADMIN_EMAILS allowlist
-            user.role = user_role
-            user.is_demo = False
-            await db.commit()
-            await db.refresh(user)
-
-        token = create_access_token(user.id, role=user.role or "investor")
-        return TokenResponse(
-            access_token=token,
-            token_type="bearer",
-            expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            user=_user_to_out(user),
         )
     except Exception as e:
         logger.error(f"Google OAuth verification failure: {e}")
@@ -356,6 +307,55 @@ async def google_oauth_login(payload: GoogleAuthRequest, db: AsyncSession = Depe
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Google token: {str(e)}",
         )
+
+    user_sub = id_info.get("sub")
+    email = id_info.get("email", "")
+    name = id_info.get("name")
+    hashed = hash_identifier(email) if email else hash_identifier(user_sub)
+
+    stmt = select(User).where(User.oauth_sub == user_sub)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user and email:
+        # Also check by email_hash
+        stmt_hash = select(User).where(User.email_hash == hashed)
+        res_hash = await db.execute(stmt_hash)
+        user = res_hash.scalar_one_or_none()
+
+    user_role = "super_admin" if (email and email.lower() in settings.admin_emails_list) else "investor"
+
+    if not user:
+        user = User(
+            email_hash=hashed,
+            auth_method="google_oauth",
+            oauth_sub=user_sub,
+            display_name=name or (email.split("@")[0] if email else "Google Investor"),
+            role=user_role,
+            is_demo=False,
+            preferences_json=_get_default_preferences(),
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        if not user.oauth_sub:
+            user.oauth_sub = user_sub
+        if name and not user.display_name:
+            user.display_name = name
+        # Synchronize role according to current ADMIN_EMAILS allowlist
+        user.role = user_role
+        user.is_demo = False
+        await db.commit()
+        await db.refresh(user)
+
+    token = create_access_token(user.id, role=user.role or "investor")
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=_user_to_out(user),
+    )
 
 
 @router.get("/me")

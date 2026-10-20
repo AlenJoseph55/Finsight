@@ -9,7 +9,7 @@ Integrates:
 """
 
 from datetime import date, timedelta
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, HTTPException, status
 from sqlalchemy import select, delete, func
 from sqlalchemy.orm import selectinload
@@ -19,7 +19,14 @@ from backend.app.config import get_settings
 from backend.app.database import get_db
 from backend.app.models.schema import User, Portfolio, Holding, SectorAllocation, DocumentChunk
 from backend.app.services.math_engine import FinancialMathEngine, HoldingInput
-from backend.app.schemas.portfolio import PortfolioSummary, UpdateHoldingRequest, FlushInvestmentDataResponse
+from backend.app.services.tax_engine import TaxEngine, SellEstimateResult
+from backend.app.schemas.portfolio import (
+    PortfolioSummary,
+    UpdateHoldingRequest,
+    FlushInvestmentDataResponse,
+    SellEstimateRequest,
+    BrokerOptionResponse,
+)
 from backend.app.core.responses import SuccessResponse
 from backend.app.core.context import request_id_ctx
 from backend.app.core.exceptions import FinSightException, ErrorCode
@@ -486,6 +493,10 @@ async def update_holding(
         holding.nav = payload.nav
     if payload.instrument_type is not None and payload.instrument_type.strip():
         holding.instrument_type = payload.instrument_type.strip().upper()
+    if payload.purchase_date is not None:
+        holding.purchase_date = payload.purchase_date
+    if payload.broker is not None:
+        holding.broker = payload.broker.strip().lower()
 
     await recalculate_portfolio(portfolio, db)
 
@@ -581,4 +592,96 @@ async def flush_all_investment_data(
             deleted_holdings=deleted_holdings_count,
         ),
     )
+
+
+@router.get("/brokers", response_model=SuccessResponse[List[BrokerOptionResponse]])
+async def get_supported_brokers(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns list of supported Indian stock & mutual fund brokers with fee summaries.
+    """
+    req_id = request_id_ctx.get()
+    brokers = TaxEngine.get_supported_brokers()
+    return SuccessResponse(
+        request_id=req_id,
+        path=request.url.path,
+        data=[BrokerOptionResponse(**b) for b in brokers],
+    )
+
+
+@router.post("/sell-estimate", response_model=SuccessResponse[SellEstimateResult])
+async def calculate_sell_estimate(
+    request: Request,
+    payload: SellEstimateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Calculates detailed brokerage fees, statutory charges (STT, GST, SEBI turnover, exchange fees),
+    exit loads, capital gains tax (LTCG vs STCG under Budget 2024), and tax-saving harvesting tips.
+    """
+    req_id = request_id_ctx.get()
+    stmt = (
+        select(Holding)
+        .where(Holding.id == payload.holding_id)
+        .options(
+            selectinload(Holding.portfolio).selectinload(Portfolio.holdings),
+        )
+    )
+    result = await db.execute(stmt)
+    holding = result.scalars().first()
+
+    if not holding or not holding.portfolio or holding.portfolio.user_id != current_user.id:
+        raise FinSightException(
+            code=ErrorCode.FS_NOT_FOUND_4040,
+            message=f"Holding with ID {payload.holding_id} not found.",
+            http_status=404,
+        )
+
+    # Derive current price/NAV
+    units = holding.units if (holding.units and holding.units > 0) else 1.0
+    current_price = (
+        holding.nav
+        if (holding.nav and holding.nav > 0)
+        else (holding.current_value / units if units > 0 else holding.current_value)
+    )
+
+    # Gather other holdings in the same portfolio for loss-harvesting checks
+    other_holdings = [
+        {
+            "id": h.id,
+            "name": h.name,
+            "invested_amount": h.invested_amount,
+            "current_value": h.current_value,
+        }
+        for h in holding.portfolio.holdings
+        if h.id != holding.id
+    ]
+
+    effective_purchase_date = payload.purchase_date or holding.purchase_date
+    broker_choice = (payload.broker or holding.broker or "zerodha").lower()
+
+    estimate = TaxEngine.calculate(
+        holding_id=holding.id,
+        holding_name=holding.name,
+        instrument_type=holding.instrument_type,
+        current_price_or_nav=current_price,
+        total_units=units,
+        total_invested=holding.invested_amount,
+        sell_quantity=payload.sell_quantity,
+        sell_amount=payload.sell_amount,
+        broker_key=broker_choice,
+        purchase_date=effective_purchase_date,
+        custom_exit_load_pct=payload.custom_exit_load_pct,
+        other_portfolio_holdings=other_holdings,
+    )
+
+    return SuccessResponse(
+        request_id=req_id,
+        path=request.url.path,
+        data=estimate,
+    )
+
 

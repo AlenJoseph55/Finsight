@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- Application ---
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "production"
     LOG_LEVEL: str = "INFO"
     SECRET_KEY: str = "change-this-to-a-super-secret-32-byte-hex-key-in-production"
     

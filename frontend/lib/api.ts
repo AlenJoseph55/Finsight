@@ -16,6 +16,9 @@ import {
   AdminPlanItem,
   UpdateHoldingPayload,
   FlushDataResponse,
+  BrokerOption,
+  SellEstimateRequest,
+  SellEstimateResult,
 } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -542,6 +545,26 @@ export async function trackAnalytics(payload: {
   }
 }
 
+export async function fetchSupportedBrokers(): Promise<BrokerOption[]> {
+  const res = await authFetch(`${API_BASE_URL}/portfolio/brokers`, { cache: "default" });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error?.message || "Failed to fetch broker list");
+  }
+  return json.data !== undefined ? json.data : json;
+}
 
-
-
+export async function calculateSellEstimate(
+  payload: SellEstimateRequest
+): Promise<SellEstimateResult> {
+  const res = await authFetch(`${API_BASE_URL}/portfolio/sell-estimate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error?.message || "Failed to calculate sell estimate");
+  }
+  return json.data !== undefined ? json.data : json;
+}

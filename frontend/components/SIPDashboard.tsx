@@ -86,8 +86,20 @@ export const SIPDashboard: React.FC<SIPDashboardProps> = ({
 
   if (isLoading && !sipData) {
     return (
-      <div className="py-16 text-center text-slate-400 text-sm">
-        Loading SIP investments...
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+              <div className="h-3.5 bg-slate-200 rounded w-24 mb-3" />
+              <div className="h-7 bg-slate-200 rounded w-36 mb-2" />
+              <div className="h-3 bg-slate-100 rounded w-28" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs h-64 flex flex-col justify-between">
+          <div className="h-5 bg-slate-200 rounded w-48" />
+          <div className="h-36 bg-slate-100/70 rounded-xl" />
+        </div>
       </div>
     );
   }

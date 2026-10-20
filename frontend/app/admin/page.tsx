@@ -326,9 +326,9 @@ export default function AdminDashboardPage() {
     );
   }, [users, userSearch]);
 
-  // While auth resolves, render a completely blank dark container (no spinner or admin cues)
+  // While auth resolves, render a completely blank light container
   if (isAuthLoading && !user) {
-    return <div className="min-h-screen bg-slate-950" />;
+    return <div className="min-h-screen bg-[#f7f8f6]" />;
   }
 
   // Client-side fallback check: trigger not-found if unauthorized

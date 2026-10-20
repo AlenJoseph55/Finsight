@@ -8,9 +8,10 @@ Why separate Pydantic schemas from SQLAlchemy models?
   are never accidentally exposed to API clients.
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
+from backend.app.services.tax_engine import SellEstimateResult, ChargesBreakdown, GainLossBreakdown, TaxTip, PortfolioLossCandidate
 
 
 class HoldingBase(BaseModel):
@@ -23,6 +24,8 @@ class HoldingBase(BaseModel):
     current_value: float = Field(..., ge=0, description="Current market value in INR (₹)")
     units: Optional[float] = Field(None, ge=0, description="Number of units or shares owned")
     nav: Optional[float] = Field(None, ge=0, description="Net Asset Value or current unit price")
+    purchase_date: Optional[date] = Field(None, description="Date of acquisition for LTCG/STCG calculation")
+    broker: Optional[str] = Field(None, description="Broker platform name e.g. zerodha, groww")
 
 
 class HoldingCreate(HoldingBase):
@@ -80,10 +83,28 @@ class UpdateHoldingRequest(BaseModel):
     units: Optional[float] = Field(None, ge=0, description="Updated number of units or shares")
     nav: Optional[float] = Field(None, ge=0, description="Updated NAV or unit price")
     instrument_type: Optional[str] = Field(None, description="'STOCK', 'MUTUAL_FUND', or 'ETF'")
+    purchase_date: Optional[date] = Field(None, description="Updated acquisition date")
+    broker: Optional[str] = Field(None, description="Updated broker identifier")
 
 
 class FlushInvestmentDataResponse(BaseModel):
     message: str
     deleted_portfolios: int
     deleted_holdings: int
+
+
+class SellEstimateRequest(BaseModel):
+    holding_id: int = Field(..., description="Holding ID to estimate exit for")
+    sell_quantity: Optional[float] = Field(None, ge=0, description="Quantity/units to sell")
+    sell_amount: Optional[float] = Field(None, ge=0, description="Target gross sell amount in INR")
+    broker: Optional[str] = Field("zerodha", description="Broker platform identifier (e.g. zerodha, groww, angel_one, etc.)")
+    purchase_date: Optional[date] = Field(None, description="Acquisition date override for exact tax calculation")
+    custom_exit_load_pct: Optional[float] = Field(None, ge=0, description="Custom mutual fund exit load percentage override")
+
+
+class BrokerOptionResponse(BaseModel):
+    key: str
+    name: str
+    notes: str
+
 

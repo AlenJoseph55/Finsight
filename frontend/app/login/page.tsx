@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, AlertCircle, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle, UserCheck, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { FinSightLogo } from "@/components/brand/FinSightLogo";
 
@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [devRole, setDevRole] = useState("investor");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingStatus, setSubmittingStatus] = useState("Signing in...");
   const [showDevDetails, setShowDevDetails] = useState(false);
 
   const [gisLoaded, setGisLoaded] = useState(false);
@@ -43,13 +44,14 @@ export default function LoginPage() {
       return;
     }
     setIsSubmitting(true);
+    setSubmittingStatus("Verifying Google account...");
     setErrorMessage(null);
     try {
       await loginWithGoogle(response.credential);
+      setSubmittingStatus("Preparing your portfolio dashboard...");
       router.push("/dashboard");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to authenticate with Google");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -95,13 +97,14 @@ export default function LoginPage() {
       return;
     }
     setIsSubmitting(true);
+    setSubmittingStatus("Signing in with Dev Google simulator...");
     setErrorMessage(null);
     try {
       await loginWithDevOAuth("investor@gmail.com", "Google Investor", "investor");
+      setSubmittingStatus("Preparing your portfolio dashboard...");
       router.push("/dashboard");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to authenticate with Google Dev OAuth");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -109,26 +112,28 @@ export default function LoginPage() {
   const handleDevOAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmittingStatus("Issuing dev token and signing in...");
     setErrorMessage(null);
     try {
       await loginWithDevOAuth(devEmail, devName, devRole);
+      setSubmittingStatus("Preparing your portfolio dashboard...");
       router.push("/dashboard");
     } catch (err: any) {
       setErrorMessage(err.message || "Dev OAuth login failed");
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDemoLogin = async () => {
     setIsSubmitting(true);
+    setSubmittingStatus("Loading demo investor session...");
     setErrorMessage(null);
     try {
       await loginDemo("demo.investor@finsight.dev");
+      setSubmittingStatus("Entering demo workspace...");
       router.push("/dashboard");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to activate Demo Account");
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -162,6 +167,23 @@ export default function LoginPage() {
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xl p-6 sm:p-9 relative overflow-hidden">
             {/* Top decorative accent */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+
+            {/* Loading Overlay when Submitting or Redirecting */}
+            {(isSubmitting || (user && !user.is_demo && !errorMessage)) && (
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-xs z-30 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-150">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 mb-4 shadow-2xs">
+                  <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1">
+                  {user && !user.is_demo ? `Welcome back, ${user.display_name}!` : submittingStatus}
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                  {user && !user.is_demo
+                    ? "Taking you straight to your portfolio dashboard..."
+                    : "Securing your session with zero-knowledge token authentication."}
+                </p>
+              </div>
+            )}
 
             {/* Title & Tagline */}
             <div className="text-center mb-6 sm:mb-8">

@@ -29,6 +29,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const INITIAL_ENVIRONMENT = process.env.NEXT_PUBLIC_ENVIRONMENT || "production";
+const INITIAL_IS_DEMO_ALLOWED = INITIAL_ENVIRONMENT.toLowerCase() !== "production";
+
 function decodeJwtUser(token: string | null): UserProfile | null {
   if (!token) return null;
   try {
@@ -59,8 +62,8 @@ function decodeJwtUser(token: string | null): UserProfile | null {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [environment, setEnvironment] = useState<string>("development");
-  const [isDemoAllowed, setIsDemoAllowed] = useState<boolean>(true);
+  const [environment, setEnvironment] = useState<string>(INITIAL_ENVIRONMENT);
+  const [isDemoAllowed, setIsDemoAllowed] = useState<boolean>(INITIAL_IS_DEMO_ALLOWED);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Helper to persist or clear token in both localStorage and cookie
@@ -78,11 +81,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchProfile = async (currentToken: string | null) => {
+    if (!currentToken) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (currentToken) {
-        headers["Authorization"] = `Bearer ${currentToken}`;
-      }
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${currentToken}`,
+      };
 
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         method: "GET",
@@ -92,21 +101,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!res.ok) {
         if (res.status === 401) {
-          // Token invalid or missing in production
+          // Token invalid or expired
           setUser(null);
           saveToken(null);
-          try {
-            const hRes = await fetch(`${API_BASE_URL}/health`, { cache: "no-store" });
-            if (hRes.ok) {
-              const hData = await hRes.json();
-              if (hData.environment) {
-                setEnvironment(hData.environment);
-                setIsDemoAllowed(hData.environment.toLowerCase() !== "production");
-              }
-            }
-          } catch {
-            // Keep default if health check is unreachable
-          }
         }
         return;
       }
@@ -114,8 +111,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const json = await res.json();
       if (json && json.data && json.data.user) {
         setUser(json.data.user);
-        setEnvironment(json.data.environment || "development");
-        setIsDemoAllowed(Boolean(json.data.is_demo_allowed));
+        if (json.data.environment) {
+          setEnvironment(json.data.environment);
+        }
+        if (typeof json.data.is_demo_allowed === "boolean") {
+          setIsDemoAllowed(json.data.is_demo_allowed);
+        }
       }
     } catch (err) {
       console.error("Failed to load user profile:", err);
@@ -133,8 +134,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (quickUser) {
         setUser(quickUser);
       }
+      fetchProfile(storedToken);
+    } else {
+      setIsLoading(false);
     }
-    fetchProfile(storedToken);
   }, []);
 
   const loginWithGoogle = async (idToken: string): Promise<UserProfile> => {

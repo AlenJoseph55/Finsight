@@ -68,7 +68,7 @@ export const AlertsDrawer: React.FC<AlertsDrawerProps> = ({
   onMarkAllRead,
   onSimulate,
   isEmbedded = false,
-  isDevMode = process.env.NODE_ENV === "development",
+  isDevMode = (process.env.NEXT_PUBLIC_ENVIRONMENT || "production").toLowerCase() !== "production",
 }) => {
   const [showSimulate, setShowSimulate] = useState(false);
   const [simulateSector, setSimulateSector] = useState("Financial Services");

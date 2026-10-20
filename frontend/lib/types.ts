@@ -10,6 +10,8 @@ export interface Holding {
   units?: number | null;
   nav?: number | null;
   allocation_pct: number;
+  purchase_date?: string | null;
+  broker?: string | null;
 }
 
 export interface UpdateHoldingPayload {
@@ -20,6 +22,80 @@ export interface UpdateHoldingPayload {
   units?: number;
   nav?: number;
   instrument_type?: string;
+  purchase_date?: string | null;
+  broker?: string | null;
+}
+
+export interface BrokerOption {
+  key: string;
+  name: string;
+  notes: string;
+}
+
+export interface ChargesBreakdown {
+  brokerage: number;
+  stt: number;
+  exchange_charges: number;
+  sebi_fee: number;
+  gst: number;
+  stamp_duty: number;
+  exit_load: number;
+  total_charges: number;
+}
+
+export interface GainLossBreakdown {
+  invested_cost: number;
+  gross_proceeds: number;
+  gross_gain: number;
+  holding_days: number;
+  is_long_term: boolean;
+  tax_category: string;
+  tax_rate_pct: number;
+  ltcg_exemption_applied: number;
+  taxable_gain: number;
+  estimated_tax: number;
+  effective_tax_rate_pct: number;
+}
+
+export interface TaxTip {
+  type: "warning" | "info" | "success" | "harvest";
+  title: string;
+  description: string;
+  potential_savings?: number | null;
+}
+
+export interface PortfolioLossCandidate {
+  holding_id: number;
+  name: string;
+  unrealized_loss: number;
+  loss_pct: number;
+}
+
+export interface SellEstimateResult {
+  holding_id: number;
+  holding_name: string;
+  instrument_type: string;
+  broker_key: string;
+  broker_name: string;
+  sell_quantity: number;
+  total_units: number;
+  sell_price: number;
+  gross_sell_value: number;
+  charges: ChargesBreakdown;
+  net_proceeds: number;
+  gain_loss: GainLossBreakdown;
+  tax_tips: TaxTip[];
+  harvest_candidates: PortfolioLossCandidate[];
+  disclaimer: string;
+}
+
+export interface SellEstimateRequest {
+  holding_id: number;
+  sell_quantity?: number;
+  sell_amount?: number;
+  broker?: string;
+  purchase_date?: string;
+  custom_exit_load_pct?: number;
 }
 
 export interface FlushDataResponse {

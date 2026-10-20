@@ -538,7 +538,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                       </div>
 
                       <div className="p-2 rounded-lg bg-amber-50/80 border border-amber-200/70 text-[10.5px] text-amber-900 leading-relaxed">
-                        🔒 <strong>Password Hint:</strong> CAMS PDFs are encrypted with your <strong>PAN in UPPERCASE</strong> or Date of Birth (DDMMYYYY).
+                        🔒 <strong>Password Hint:</strong> CAMS PDFs are encrypted with the password provided when you generated the CAMS PDF
                       </div>
                     </div>
                   )}

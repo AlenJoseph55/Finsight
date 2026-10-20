@@ -8,7 +8,7 @@ Key Architecture Highlights:
 - Human-in-the-loop: FeedbackTrace table records user corrections to train future prompts.
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 from sqlalchemy import (
     String,
@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     Boolean,
     DateTime,
+    Date,
     ForeignKey,
     JSON,
     func,
@@ -106,6 +107,8 @@ class Holding(Base):
     units: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     nav: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Net Asset Value or stock price
     allocation_pct: Mapped[float] = mapped_column(Float, default=0.0)  # Calculated deterministically
+    purchase_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    broker: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
