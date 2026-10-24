@@ -17,6 +17,9 @@ COPY backend /workspace/backend
 
 ENV PYTHONPATH=/workspace
 
+# Build-time smoke test: fail immediately if any dependency or app module fails to import
+RUN python -c "from backend.app.main import app; print('FinSight app loaded cleanly during image build')"
+
 EXPOSE 8000
 
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

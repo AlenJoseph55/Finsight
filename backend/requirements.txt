@@ -15,7 +15,8 @@ python-multipart>=0.0.9
 
 # --- Database & Storage ---
 # SQLAlchemy 2.0: Python SQL toolkit and Object Relational Mapper (ORM) with async support
-sqlalchemy>=2.0.30,<3.0.0
+sqlalchemy[asyncio]>=2.0.30,<3.0.0
+greenlet>=3.0.0
 # asyncpg: High-performance asynchronous PostgreSQL driver
 asyncpg>=0.29.0
 # psycopg2-binary: Synchronous PostgreSQL driver used by Alembic for schema migrations
